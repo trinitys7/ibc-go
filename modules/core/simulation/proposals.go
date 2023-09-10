@@ -7,8 +7,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/address"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
+	ibctm "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
 )
 
@@ -31,6 +34,11 @@ func ProposalMsgs() []simtypes.WeightedProposalMsg {
 			OpWeightMsgUpdateParams,
 			DefaultWeightMsgUpdateParams,
 			SimulateConnectionMsgUpdateParams,
+		),
+		simulation.NewWeightedProposalMsg(
+			OpWeightMsgUpdateParams,
+			DefaultWeightMsgUpdateParams,
+			SimulateMsgRecoverClient,
 		),
 	}
 }
@@ -57,4 +65,40 @@ func SimulateConnectionMsgUpdateParams(r *rand.Rand, _ sdk.Context, _ []simtypes
 		Signer: signer.String(),
 		Params: params,
 	}
+}
+
+// SimulateRecoverClient returns a random MsgRecoverClient 02-client
+func SimulateMsgRecoverClient(r *rand.Rand, _ sdk.Context, _ []simtypes.Account) sdk.Msg {
+	var signer sdk.AccAddress = address.Module("gov")
+
+	subjectClientId := "07-tendermint-1"
+	substituteClientId := "07-tendermint-2"
+
+	return &clienttypes.MsgRecoverClient{
+		Signer:             signer.String(),
+		SubjectClientId:    subjectClientId,
+		SubstituteClientId: substituteClientId,
+	}
+}
+
+// SimulateRecoverClient returns a random MsgRecoverClient 02-client
+func SimulateMsgIBCSoftwareUpgrade(r *rand.Rand, _ sdk.Context, _ []simtypes.Account) sdk.Msg {
+	var signer sdk.AccAddress = address.Module("gov")
+
+	plan := upgradetypes.Plan{
+		Name:   "upgrade IBC clients",
+		Height: 1000,
+	}
+
+	anyClient, err := clienttypes.PackClientState(&ibctm.ClientState{})
+	if err != nil {
+		return nil
+	}
+
+	return &clienttypes.MsgIBCSoftwareUpgrade{
+		Signer:              signer.String(),
+		Plan:                plan,
+		UpgradedClientState: anyClient,
+	}
+
 }
